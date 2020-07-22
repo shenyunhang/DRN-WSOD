@@ -909,6 +909,88 @@ __C.RESNETS.SHORTCUT_FUNC = 'basic_bn_shortcut'
 # Apply dilation in stage "res5"
 __C.RESNETS.RES5_DILATION = 1
 
+# ---------------------------------------------------------------------------- #
+# WSL options
+# ---------------------------------------------------------------------------- #
+__C.WSL = AttrDict()
+
+# WSL is enabled if True
+__C.WSL.WSL_ON = False
+
+__C.WSL.ITER_SIZE = 1
+
+__C.WSL.DEBUG = False
+
+__C.WSL.SAMPLE = False
+
+__C.WSL.SAMPLE_ITER = 1280
+
+__C.WSL.CPG = False
+
+__C.WSL.CPG_PRE_BLOB = 'cls_prob'
+
+__C.WSL.CPG_DATA_BLOB = 'data'
+
+__C.WSL.CPG_TAU = 0.7
+
+__C.WSL.CPG_MAX_ITER = 0
+
+__C.WSL.CSC_MAX_ITER = 35000
+
+__C.WSL.CSC = False
+
+__C.WSL.CSC_FG_THRESHOLD = 0.1
+
+__C.WSL.CSC_MASS_THRESHOLD = 0.2
+
+__C.WSL.CSC_DENSITY_THRESHOLD = 0.0
+
+__C.WSL.CENTER_LOSS = False
+
+__C.WSL.CENTER_LOSS_NUMBER = 5
+
+__C.WSL.CENTER_LOSS_TOP_K = 10
+
+__C.WSL.CONTEXT = False
+
+__C.WSL.CONTEXT_RATIO = 1.8
+
+__C.WSL.OICR = False
+
+__C.WSL.PCL = False
+
+__C.WSL.CMIL = False
+
+__C.WSL.SIZE_EPOCH = 5000
+
+__C.WSL.MLP_HEAD_DIM = []
+
+__C.WSL.DEEP_MEM = False
+
+__C.WSL.MEAN_LOSS = False
+
+__C.WSL.USE_DISTORTION = True
+
+__C.WSL.SATURATION = 1.5
+
+__C.WSL.EXPOSURE = 1.5
+
+__C.WSL.USE_CROP = True
+
+__C.WSL.CROP = 0.9
+
+__C.WSL.DILATION = 1
+
+__C.WSL.MASK_SOFTMAX = False
+
+__C.WSL.MIN_ENTROPY_LOSS = False
+
+__C.WSL.PTH_IMG = False
+
+__C.USE_PSEUDO = False
+
+__C.PSEUDO_PATH = ()
+
 
 # ---------------------------------------------------------------------------- #
 # GroupNorm options
@@ -951,6 +1033,8 @@ __C.BBOX_XFORM_CLIP = np.log(1000. / 16.)
 # "Fun" fact: the history of where these values comes from is lost
 __C.PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
 
+__C.PIXEL_STDS = np.array([[[1.0, 1.0, 1.0]]])
+
 # For reproducibility...but not really because modern fast GPU libraries use
 # non-deterministic op implementations
 __C.RNG_SEED = 3
@@ -968,7 +1052,7 @@ __C.OUTPUT_DIR = '/tmp'
 __C.MATLAB = 'matlab'
 
 # Reduce memory usage with memonger gradient blob sharing
-__C.MEMONGER = True
+__C.MEMONGER = False
 
 # Futher reduce memory by allowing forward pass activations to be shared when
 # possible. Note that this will cause activation blob inspection (values,

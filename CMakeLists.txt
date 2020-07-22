@@ -29,6 +29,9 @@ detectron_print_config_summary()
 file(GLOB CUSTOM_OPS_CPU_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/detectron/ops/*.cc)
 file(GLOB CUSTOM_OPS_GPU_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/detectron/ops/*.cu)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/detectron/ops/densecrf/include)
+add_subdirectory (${CMAKE_CURRENT_SOURCE_DIR}/detectron/ops/densecrf)
+
 # Install custom CPU ops lib.
 add_library(
     caffe2_detectron_custom_ops SHARED
@@ -38,7 +41,14 @@ target_include_directories(
     caffe2_detectron_custom_ops PRIVATE
     ${CAFFE2_INCLUDE_DIRS})
 
-target_link_libraries(caffe2_detectron_custom_ops caffe2_library)
+#target_link_libraries(caffe2_detectron_custom_ops caffe2_library densecrf)
+
+# static protobuf library
+add_library(libprotobuf STATIC IMPORTED)
+set(PROTOBUF_LIB "${PYTORCH_PATH}/build/lib/libprotobuf.a")
+set_property(TARGET libprotobuf PROPERTY IMPORTED_LOCATION "${PROTOBUF_LIB}")
+target_link_libraries(caffe2_detectron_custom_ops densecrf libprotobuf)
+
 install(TARGETS caffe2_detectron_custom_ops DESTINATION lib)
 
 # Install custom GPU ops lib, if gpu is present.
@@ -51,6 +61,7 @@ if (CAFFE2_USE_CUDA OR CAFFE2_FOUND_CUDA)
       ${CUSTOM_OPS_CPU_SRCS}
       ${CUSTOM_OPS_GPU_SRCS})
 
-  target_link_libraries(caffe2_detectron_custom_ops_gpu caffe2_gpu_library)
+  #target_link_libraries(caffe2_detectron_custom_ops_gpu caffe2_gpu_library densecrf)
+  target_link_libraries(caffe2_detectron_custom_ops_gpu densecrf "${PROTOBUF_LIB}")
   install(TARGETS caffe2_detectron_custom_ops_gpu DESTINATION lib)
 endif()

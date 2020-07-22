@@ -1,0 +1,43 @@
+#ifndef CAFFE2_KL_OP_H_
+#define CAFFE2_KL_OP_H_
+
+#include "caffe2/core/context.h"
+#include "caffe2/core/logging.h"
+#include "caffe2/core/operator.h"
+#include "caffe2/utils/math.h"
+
+namespace caffe2 {
+
+template <typename T, class Context>
+class KLOp final : public Operator<Context> {
+ public:
+  USE_OPERATOR_CONTEXT_FUNCTIONS;
+  KLOp(const OperatorDef& operator_def, Workspace* ws)
+      : Operator<Context>(operator_def, ws),
+        ignore_value_(OperatorBase::template GetSingleArgument<float>(
+            "ignore_value", 0.5)) {}
+
+  bool RunOnDevice() override;
+
+ protected:
+  float ignore_value_;
+};
+
+template <typename T, class Context>
+class KLGradientOp final : public Operator<Context> {
+ public:
+  USE_OPERATOR_CONTEXT_FUNCTIONS;
+  KLGradientOp(const OperatorDef& operator_def, Workspace* ws)
+      : Operator<Context>(operator_def, ws),
+        ignore_value_(OperatorBase::template GetSingleArgument<float>(
+            "ignore_value", 0.5)) {}
+
+  bool RunOnDevice() override;
+
+ protected:
+  float ignore_value_;
+};
+
+}  // namespace caffe2
+
+#endif  // CAFFE2_OPERATORS_KL_OP_H_

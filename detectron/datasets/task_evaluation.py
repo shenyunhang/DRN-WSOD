@@ -124,6 +124,13 @@ def evaluate_masks(dataset, all_boxes, all_segms, output_dir):
             cleanup=not_comp
         )
         mask_results = _cs_eval_to_mask_results(cs_eval)
+    elif _use_voc_evaluator(dataset):
+        # For VOC, always use salt and always cleanup because results are
+        # written to the shared VOCdevkit results directory
+        voc_eval = voc_dataset_evaluator.evaluate_masks(
+            dataset, all_boxes, all_segms, output_dir
+        )
+        mask_results = _voc_eval_to_mask_results(voc_eval)
     else:
         raise NotImplementedError(
             'No evaluator for dataset: {}'.format(dataset.name)
@@ -339,6 +346,11 @@ def _coco_eval_to_keypoint_results(coco_eval):
 def _voc_eval_to_box_results(voc_eval):
     # Not supported (return empty results)
     return _empty_box_results()
+
+
+def _voc_eval_to_mask_results(voc_eval):
+    # Not supported (return empty results)
+    return _empty_mask_results()
 
 
 def _cs_eval_to_mask_results(cs_eval):

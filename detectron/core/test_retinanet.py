@@ -78,16 +78,45 @@ def im_detect_bbox(model, im, timers=None):
     inputs['data'], im_scale, inputs['im_info'] = \
         blob_utils.get_image_blob(im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE)
     cls_probs, box_preds = [], []
+    im_cls_probs=[]
     for lvl in range(k_min, k_max + 1):
         suffix = 'fpn{}'.format(lvl)
         cls_probs.append(core.ScopedName('retnet_cls_prob_{}'.format(suffix)))
+        im_cls_probs.append(core.ScopedName('cls_prob_{}'.format(suffix)))
         box_preds.append(core.ScopedName('retnet_bbox_pred_{}'.format(suffix)))
     for k, v in inputs.items():
         workspace.FeedBlob(core.ScopedName(k), v.astype(np.float32, copy=False))
 
     workspace.RunNet(model.net.Proto().name)
     cls_probs = workspace.FetchBlobs(cls_probs)
-    box_preds = workspace.FetchBlobs(box_preds)
+    im_cls_probs = workspace.FetchBlobs(im_cls_probs)
+    # box_preds = workspace.FetchBlobs(box_preds)
+    box_preds=[]
+    for cls_prob in cls_probs:
+        box_preds.append(np.zeros((cls_prob.shape[0],A*4,cls_prob.shape[2],cls_prob.shape[3])))
+
+    # logger.info(im_cls_probs[-1].shape)
+    # for i in range(cfg.MODEL.NUM_CLASSES-1):
+        # logger.info(im_cls_probs[-1][:,i,:,:])
+
+    # logger.info(cls_probs[-1].shape)
+    # for i in range(cfg.MODEL.NUM_CLASSES-1):
+        # logger.info(cls_probs[-1][:,i,:,:])
+
+    if cfg.WSL.WSL_ON:
+        for i in range(len(cls_probs)):
+            # logger.info(cls_probs[i].shape)
+            old_shape = cls_probs[i].shape
+            new_prob = np.zeros(
+                (old_shape[0], old_shape[1] + 1, old_shape[2], old_shape[3]),
+                dtype=cls_probs[i].dtype)
+            new_prob[:, 1:, :, :] = cls_probs[i]
+            cls_probs[i] = new_prob
+            # logger.info(cls_probs[i].shape)
+
+    # logger.info(cls_probs[-1].shape)
+    # for i in range(cfg.MODEL.NUM_CLASSES):
+        # logger.info(cls_probs[-1][:,i,:,:])
 
     # here the boxes_all are [x0, y0, x1, y1, score]
     boxes_all = defaultdict(list)

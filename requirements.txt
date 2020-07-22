@@ -9,3 +9,5 @@ scipy
 six
 future
 protobuf
+networkx
+easydict

@@ -1,0 +1,64 @@
+MODEL:
+  TYPE: generalized_wsl
+  CONV_BODY: ResNet18.add_ResNet18_conv5_body
+  NUM_CLASSES: 21
+NUM_GPUS: 4
+SOLVER:
+  WEIGHT_DECAY: 0.0005
+  LR_POLICY: steps_with_decay
+  BASE_LR: 0.01
+  GAMMA: 0.1
+  MOMENTUM: 0.9
+  MAX_ITER: 50000
+  STEPS: [0, 35000]
+  WARM_UP_ITERS: 0
+RESNETS:
+  RES5_DILATION: 2
+  TRANS_FUNC: 'residual_transformation'
+FAST_RCNN:
+  ROI_BOX_HEAD: wsl_heads.add_ResNet_roi_0fc_head
+  ROI_XFORM_METHOD: RoIPoolF
+  ROI_XFORM_RESOLUTION: 7
+  ROI_XFORM_SAMPLING_RATIO: 2
+TRAIN:
+  WEIGHTS: models/DRN-WSOD/resnet18_model_120.pkl
+  DATASETS: ('voc_2007_train', 'voc_2007_val')
+  PROPOSAL_FILES: ('detectron/datasets/data/proposals/mcg_voc_2007_train.pkl', 'detectron/datasets/data/proposals/mcg_voc_2007_val.pkl')
+  SCALES: (480, 576, 688, 864, 1200)
+  MAX_SIZE: 2000
+  IMS_PER_BATCH: 1
+  BATCH_SIZE_PER_IM: 4096
+  FREEZE_AT: 2
+  CROWD_FILTER_THRESH: 0.0
+  SNAPSHOT_ITERS: 10000
+TEST:
+  DATASETS: ('voc_2007_test',)
+  PROPOSAL_FILES: ('detectron/datasets/data/proposals/mcg_voc_2007_test.pkl',)
+  PROPOSAL_LIMIT: 9999
+  SCALE: 688
+  MAX_SIZE: 4000
+  NMS: 0.3
+  BBOX_REG: False
+  SCORE_THRESH: 0.00001
+  DETECTIONS_PER_IM: 100
+  BBOX_AUG:
+    ENABLED: True
+    SCORE_HEUR: 'AVG'
+    COORD_HEUR: 'ID'
+    H_FLIP: True
+    SCALES: (480, 576, 864, 1200)
+    MAX_SIZE: 4000
+    SCALE_H_FLIP: True
+OUTPUT_DIR: .
+RNG_SEED: 11
+WSL:
+  WSL_ON: True
+  ITER_SIZE: 1
+  MEAN_LOSS: True
+  DILATION: 2
+  OICR: True
+MEMONGER: True
+VIS: True
+VIS_TH: 0.1
+USE_NCCL: True
+DEDUP_BOXES: 0.03125

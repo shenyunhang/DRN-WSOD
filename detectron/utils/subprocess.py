@@ -23,6 +23,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import time
 import os
 import numpy as np
 import subprocess
@@ -58,7 +59,7 @@ def process_in_parallel(
         assert -1 not in gpu_inds, \
             'Hiding GPU indices using the \'-1\' index is not supported'
     else:
-        gpu_inds = range(cfg.NUM_GPUS)
+        gpu_inds = reversed(range(cfg.NUM_GPUS))
     # Run the binary in cfg.NUM_GPUS subprocesses
     for i, gpu_ind in enumerate(gpu_inds):
         start = subinds[i][0]
@@ -89,6 +90,8 @@ def process_in_parallel(
             bufsize=1
         )
         processes.append((i, p, start, end, subprocess_stdout))
+        print('Sleep 15s for gpu_id ', gpu_ind)
+        time.sleep(15)
     # Log output from inference processes and collate their results
     outputs = []
     for i, p, start, end, subprocess_stdout in processes:

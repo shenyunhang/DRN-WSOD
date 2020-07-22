@@ -303,13 +303,13 @@ def vis_one_image(
                           bbox[2] - bbox[0],
                           bbox[3] - bbox[1],
                           fill=False, edgecolor='g',
-                          linewidth=0.5, alpha=box_alpha))
+                          linewidth=2.5, alpha=box_alpha))
 
         if show_class:
             ax.text(
-                bbox[0], bbox[1] - 2,
+                bbox[0] - 3, bbox[1] - 10,
                 get_class_string(classes[i], score, dataset),
-                fontsize=3,
+                fontsize=12,
                 family='serif',
                 bbox=dict(
                     facecolor='g', alpha=0.4, pad=0, edgecolor='none'),

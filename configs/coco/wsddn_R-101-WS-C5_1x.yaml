@@ -1,0 +1,68 @@
+MODEL:
+  TYPE: generalized_wsl
+  CONV_BODY: ResNet_WS.add_ResNet101_conv5_body
+  NUM_CLASSES: 81
+NUM_GPUS: 4
+SOLVER:
+  WEIGHT_DECAY: 0.0005
+  LR_POLICY: steps_with_decay
+  BASE_LR: 0.01
+  GAMMA: 0.1
+  MOMENTUM: 0.9
+  MAX_ITER: 200000
+  STEPS: [0, 200000]
+  WARM_UP_ITERS: 0
+RESNETS:
+  RES5_DILATION: 2
+FAST_RCNN:
+  ROI_BOX_HEAD: wsl_heads.add_ResNet_roi_2fc_head
+  MLP_HEAD_DIM: 1024
+  #ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_METHOD: RoIPoolF
+  ROI_XFORM_RESOLUTION: 7
+  ROI_XFORM_SAMPLING_RATIO: 2
+TRAIN:
+  WEIGHTS: models/DRN-WSOD/resnet101_ws_model_120.pkl
+  DATASETS: ('coco_2014_train', 'coco_2014_valminusminival')
+  PROPOSAL_FILES: ('detectron/datasets/data/proposals/mcg_coco_2014_train.pkl', 'detectron/datasets/data/proposals/mcg_coco_2014_valminusminival.pkl')
+  SCALES: (480, 576, 688, 864, 1200)
+  MAX_SIZE: 2000
+  IMS_PER_BATCH: 1
+  BATCH_SIZE_PER_IM: 2048
+  FREEZE_CONV_BODY: True
+  CROWD_FILTER_THRESH: 0.0
+  SNAPSHOT_ITERS: 10000
+TEST:
+  DATASETS: ('coco_2014_minival',)
+  PROPOSAL_FILES: ('detectron/datasets/data/proposals/mcg_coco_2014_minival.pkl',)
+  PROPOSAL_LIMIT: 9999
+  SCALE: 688
+  MAX_SIZE: 2000
+  NMS: 0.5
+  BBOX_REG: False
+  SCORE_THRESH: 0.000000001
+  #DETECTIONS_PER_IM: 10000
+  DETECTIONS_PER_IM: 100
+  BBOX_AUG:
+    ENABLED: True
+    SCORE_HEUR: 'AVG'
+    COORD_HEUR: 'ID'
+    H_FLIP: True
+    SCALES: (480, 576, 864, 1200)
+    MAX_SIZE: 2000
+    SCALE_H_FLIP: True
+OUTPUT_DIR: .
+RNG_SEED: 11
+WSL:
+  WSL_ON: True
+  ITER_SIZE: 32
+  MEAN_LOSS: False
+  DILATION: 2
+  MLP_HEAD_DIM: [2048, 4096]
+  #MLP_HEAD_DIM: [1024, 4096]
+  DEEP_MEM: True
+MEMONGER: True
+VIS: True
+VIS_TH: 0.1
+USE_NCCL: True
+DEDUP_BOXES: 0.0625

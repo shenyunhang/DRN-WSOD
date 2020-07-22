@@ -80,11 +80,15 @@ class JsonDataset(object):
         }
         self._init_keypoints()
 
+        logger.info(self.classes)
+        logger.info(self.json_category_id_to_contiguous_id)
+        logger.info(self.contiguous_category_id_to_json_id)
+
     def get_roidb(
         self,
         gt=False,
         proposal_file=None,
-        min_proposal_size=2,
+        min_proposal_size=20,
         proposal_limit=-1,
         crowd_filter_thresh=0
     ):
@@ -111,6 +115,14 @@ class JsonDataset(object):
                 '_add_gt_annotations took {:.3f}s'.
                 format(self.debug_timer.toc(average=False))
             )
+
+        if cfg.USE_PSEUDO and 'test' not in self.name:
+            pgt_roidb = copy.deepcopy(self.COCO.loadImgs(image_ids))
+            for entry in pgt_roidb:
+                self._prep_roidb_entry(entry)
+            self._add_pseudo_gt_annotations(pgt_roidb, roidb)
+            roidb = pgt_roidb
+
         if proposal_file is not None:
             # Include proposals from a file
             self.debug_timer.tic()
@@ -123,6 +135,7 @@ class JsonDataset(object):
                 format(self.debug_timer.toc(average=False))
             )
         _add_class_assignments(roidb)
+        roidb = _filter_no_class(self.name, roidb)
         return roidb
 
     def _prep_roidb_entry(self, entry):
@@ -245,6 +258,215 @@ class JsonDataset(object):
                 entry['gt_keypoints'], gt_keypoints, axis=0
             )
             entry['has_visible_keypoints'] = im_has_visible_keypoints
+
+    def _add_pseudo_gt_annotations(self, roidb, gt_roidb):
+        """
+        Return the database of pseudo ground-truth regions of interest from detect result.
+
+        This function loads/saves from/to a cache file to speed up future calls.
+        """
+        # gt_roidb = copy.deepcopy(roidb)
+        # for entry in roidb:
+            # self._add_gt_annotations(entry)
+
+
+        assert 'train' in self.name or 'val' in self.name, 'Only trainval dataset has pseudo gt.'
+
+        # detection.pkl is 0-based indices
+        # the VOC result file is 1-based indices
+
+        cache_files = cfg.PSEUDO_PATH
+        if isinstance(cache_files, str):
+            cache_files = (cache_files, )
+        all_dets = None
+        for cache_file in cache_files:
+            if self.name not in cache_file:
+                continue
+            assert os.path.exists(cache_file), cache_file
+            # with open(cache_file, 'rb') as fid:
+                # res = cPickle.load(fid)
+            res = load_object(cache_file)
+            print('{} pseudo gt roidb loaded from {}'.format(self.name, cache_file))
+            if all_dets is None:
+                all_dets = res['all_boxes']
+            else:
+                for i in range(len(all_dets)):
+                    all_dets[i].extend(res['all_boxes'][i])
+
+        assert len(all_dets[1]) == len(roidb), len(all_dets[1])
+        if len(all_dets) == self.num_classes:
+            cls_offset = 0
+        elif len(all_dets) + 1 == self.num_classes:
+            cls_offset = -1
+        else:
+            raise Exception('Unknown mode.')
+
+        threshold = 1.0
+
+        for im_i, entry in enumerate(roidb):
+            if im_i % 1000 == 0:
+                print('{:d} / {:d}'.format(im_i + 1, len(roidb)))
+            num_valid_objs = 0
+            if len(gt_roidb[im_i]['gt_classes']) == 0:
+                print(gt_roidb[im_i])
+            if len(gt_roidb[im_i]['is_crowd']) == sum(gt_roidb[im_i]['is_crowd']):
+                print(gt_roidb[im_i])
+
+            # when cfg.WSL = False, background class is in.
+            # detection.pkl only has 20 classes
+            # fast_rcnn need 21 classes
+            for cls in range(1, self.num_classes):
+                # TODO(YH): we need threshold the pseudo label
+                # filter the pseudo label
+
+                # self._gt_class has 21 classes
+                # if self._gt_classes[ix][cls] == 0:
+                if cls not in gt_roidb[im_i]['gt_classes']:
+                    continue
+                dets = all_dets[cls + cls_offset][im_i]
+                if dets.shape[0] <= 0:
+                    continue
+
+                # TODO(YH): keep only one box
+                # if dets.shape[0] > 0:
+                # num_valid_objs += 1
+
+                max_score = 0
+                num_valid_objs_cls = 0
+                for i in range(dets.shape[0]):
+                    det = dets[i]
+
+                    score = det[4]
+                    if score > max_score:
+                        max_score = score
+                    if score < threshold:
+                        continue
+                    num_valid_objs += 1
+                    num_valid_objs_cls += 1
+
+                if num_valid_objs_cls == 0:
+                    if max_score > 0:
+                        num_valid_objs += 1
+
+            boxes = np.zeros((num_valid_objs, 4), dtype=entry['boxes'].dtype)
+            # obn_scores = np.zeros((num_valid_objs, 1), dtype=entry['obn_scores'].dtype)
+            gt_classes = np.zeros((num_valid_objs), dtype=entry['gt_classes'].dtype)
+            gt_overlaps = np.zeros(
+                (num_valid_objs, self.num_classes),
+                dtype=entry['gt_overlaps'].dtype
+            )
+            seg_areas = np.zeros((num_valid_objs), dtype=entry['seg_areas'].dtype)
+            is_crowd = np.zeros((num_valid_objs), dtype=entry['is_crowd'].dtype)
+            box_to_gt_ind_map = np.zeros(
+                (num_valid_objs), dtype=entry['box_to_gt_ind_map'].dtype
+            )
+
+
+            obj_i = 0
+            valid_segms = []
+            for cls in range(1, self.num_classes):
+                # filter the pseudo label
+                # self._gt_class has 21 classes
+                # if self._gt_classes[ix][cls] == 0:
+                if cls not in gt_roidb[im_i]['gt_classes']:
+                    continue
+                dets = all_dets[cls + cls_offset][im_i]
+                if dets.shape[0] <= 0:
+                    continue
+
+                max_score = 0
+                max_score_bb = []
+                num_valid_objs_cls = 0
+                for i in range(dets.shape[0]):
+                    det = dets[i]
+                    x1 = det[0]
+                    y1 = det[1]
+                    x2 = det[2]
+                    y2 = det[3]
+
+                    score = det[4]
+                    if score > max_score:
+                        max_score = score
+                        max_score_bb = [x1, y1, x2, y2]
+                    if score < threshold:
+                        continue
+
+                    assert x1 >= 0
+                    assert y1 >= 0
+                    assert x2 >= x1
+                    assert y2 >= y1
+                    assert x2 < entry['width']
+                    assert y2 < entry['height']
+
+                    boxes[obj_i, :] = [x1, y1, x2, y2]
+                    gt_classes[obj_i] = cls
+                    seg_areas[obj_i] = (x2 - x1 + 1) * (y2 - y1 + 1)
+                    is_crowd[obj_i] = 0
+                    box_to_gt_ind_map[obj_i] = obj_i
+                    gt_overlaps[obj_i, cls] = 1.0
+                    valid_segms.append([])
+                    
+
+                    obj_i += 1
+                    num_valid_objs_cls += 1
+
+                if num_valid_objs_cls == 0:
+                    x1, y1, x2, y2 = max_score_bb[:]
+
+                    assert x1 >= 0
+                    assert y1 >= 0
+                    assert x2 >= x1
+                    assert y2 >= y1
+                    assert x2 < entry['width']
+                    assert y2 < entry['height']
+
+                    boxes[obj_i, :] = [x1, y1, x2, y2]
+                    gt_classes[obj_i] = cls
+                    seg_areas[obj_i] = (x2 - x1 + 1) * (y2 - y1 + 1)
+                    is_crowd[obj_i] = 0
+                    box_to_gt_ind_map[obj_i] = obj_i
+                    gt_overlaps[obj_i, cls] = 1.0
+                    valid_segms.append([])
+
+                    obj_i += 1
+
+            assert obj_i == num_valid_objs
+
+            # Show Pseudo GT boxes
+            if True:
+            # if False:
+                import cv2
+                im = cv2.imread(entry['image'])
+                for obj_i in range(num_valid_objs):
+                    cv2.rectangle(im, (boxes[obj_i][0], boxes[obj_i][1]),
+                                  (boxes[obj_i][2], boxes[obj_i][3]), (255, 0,
+                                                                       0), 5)
+                save_dir = os.path.join(cfg.OUTPUT_DIR, 'pgt')
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
+                save_path = os.path.join(save_dir, str(im_i) + '.png')
+                # print(save_path)
+                cv2.imwrite(save_path, im)
+
+                # cv2.imshow('im', im)
+                # cv2.waitKey()
+
+            entry['boxes'] = np.append(entry['boxes'], boxes, axis=0)
+            # entry['obn_scores'] = np.append(entry['obn_scores'], obn_scores, axis=0)
+            entry['segms'].extend(valid_segms)
+            # To match the original implementation:
+            # entry['boxes'] = np.append(
+            #     entry['boxes'], boxes.astype(np.int).astype(np.float), axis=0)
+            entry['gt_classes'] = np.append(entry['gt_classes'], gt_classes)
+            entry['seg_areas'] = np.append(entry['seg_areas'], seg_areas)
+            entry['gt_overlaps'] = np.append(
+                entry['gt_overlaps'].toarray(), gt_overlaps, axis=0
+            )
+            entry['gt_overlaps'] = scipy.sparse.csr_matrix(entry['gt_overlaps'])
+            entry['is_crowd'] = np.append(entry['is_crowd'], is_crowd)
+            entry['box_to_gt_ind_map'] = np.append(
+                entry['box_to_gt_ind_map'], box_to_gt_ind_map
+            )
 
     def _add_proposals_from_file(
         self, roidb, proposal_file, min_proposal_size, top_k, crowd_thresh
@@ -448,6 +670,19 @@ def _add_class_assignments(roidb):
         nonzero_inds = np.where(max_overlaps > 0)[0]
         assert all(max_classes[nonzero_inds] != 0)
 
+
+def _filter_no_class(name, roidb):
+    if 'test' in name:
+        return roidb
+    new_roidb = []
+    for entry in roidb:
+        if sum(entry['max_classes']) == 0:
+            continue
+        new_roidb.append(entry)
+    print('number of original roidb: ', len(roidb))
+    print('number of new roidb: ', len(new_roidb))
+    return new_roidb
+        
 
 def _sort_proposals(proposals, id_field):
     """Sort proposals by the specified id field."""

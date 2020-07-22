@@ -29,6 +29,7 @@ from detectron.utils.c2 import const_fill
 from detectron.utils.c2 import gauss_fill
 from detectron.utils.net import get_group_gn
 import detectron.modeling.ResNet as ResNet
+import detectron.modeling.ResNet18 as ResNet18
 import detectron.utils.blob as blob_utils
 import detectron.utils.boxes as box_utils
 
@@ -42,6 +43,12 @@ HIGHEST_BACKBONE_LVL = 5  # E.g., "conv5"-like level
 # ---------------------------------------------------------------------------- #
 # FPN with ResNet
 # ---------------------------------------------------------------------------- #
+
+def add_fpn_ResNet18_conv5_body(model):
+    return add_fpn_onto_conv_body(
+        model, ResNet18.add_ResNet18_conv5_body, fpn_level_info_ResNet18_conv5
+    )
+
 
 def add_fpn_ResNet50_conv5_body(model):
     return add_fpn_onto_conv_body(
@@ -542,6 +549,14 @@ FpnLevelInfo = collections.namedtuple(
     'FpnLevelInfo',
     ['blobs', 'dims', 'spatial_scales']
 )
+
+
+def fpn_level_info_ResNet18_conv5():
+    return FpnLevelInfo(
+        blobs=('res5_1_sum', 'res4_1_sum', 'res3_1_sum', 'res2_1_sum'),
+        dims=(512, 256, 128, 64),
+        spatial_scales=(1. / 32., 1. / 16., 1. / 8., 1. / 4.)
+    )
 
 
 def fpn_level_info_ResNet50_conv5():

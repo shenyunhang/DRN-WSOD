@@ -282,9 +282,9 @@ class DetectionModelHelper(cnn.CNNModelHelper):
           - Use of FPN or not
           - Specifics of the transform method
         """
-        assert method in {'RoIPoolF', 'RoIAlign'}, \
+        assert method in {'RoIPoolF', 'RoIAlign', 'RoILoopPool'}, \
             'Unknown pooling method: {}'.format(method)
-        has_argmax = (method == 'RoIPoolF')
+        has_argmax = (method == 'RoIPoolF' or method == 'RoILoopPool')
         if isinstance(blobs_in, list):
             # FPN case: add RoIFeatureTransform to each FPN level
             k_max = cfg.FPN.ROI_MAX_LEVEL  # coarsest level of pyramid
@@ -364,6 +364,20 @@ class DetectionModelHelper(cnn.CNNModelHelper):
         return self.net.Conv(
             blobs_in, blob_out, kernel=kernel, order=self.order, **kwargs
         )
+
+
+    def FCShared(
+            self,
+            blob_in,
+            blob_out,
+            dim_in,
+            dim_out,
+            weight=None,
+            bias=None,
+            **kwargs
+    ):
+        return self.net.FC([blob_in, weight, bias], blob_out, **kwargs)
+
 
     def BilinearInterpolation(
         self, blob_in, blob_out, dim_in, dim_out, up_scale

@@ -192,7 +192,7 @@ def load_and_convert_caffe_model(prototxt_file_name, caffemodel_file_name):
     caffenet = caffe_pb2.NetParameter()
     caffenet_weights = caffe_pb2.NetParameter()
     text_format.Merge(open(prototxt_file_name).read(), caffenet)
-    caffenet_weights.ParseFromString(open(caffemodel_file_name).read())
+    caffenet_weights.ParseFromString(open(caffemodel_file_name, 'rb').read())
     # C2 conv layers current require biases, but they are optional in C1
     # Add zeros as biases is they are missing
     add_missing_biases(caffenet_weights)

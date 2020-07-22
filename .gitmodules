@@ -1,0 +1,3 @@
+[submodule "detectron/ops/densecrf"]
+	path = detectron/ops/densecrf
+	url = https://github.com/shenyunhang/densecrf.git

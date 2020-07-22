@@ -98,6 +98,8 @@ def im_list_to_blob(ims):
 
 
 def prep_im_for_blob(im, pixel_means, target_size, max_size):
+    # return prep_im_for_blob_unchanged(im, pixel_means, target_size, max_size)
+
     """Prepare an image for use as a network input blob. Specially:
       - Subtract per-channel pixel mean
       - Convert to float32
@@ -106,7 +108,11 @@ def prep_im_for_blob(im, pixel_means, target_size, max_size):
     the scale factors that were used to compute each returned image.
     """
     im = im.astype(np.float32, copy=False)
+    if cfg.WSL.PTH_IMG:
+        im = im[:, :, [2, 1, 0]]
+        im = im / 225.0
     im -= pixel_means
+    im /=  cfg.PIXEL_STDS
     im_shape = im.shape
     im_size_min = np.min(im_shape[0:2])
     im_size_max = np.max(im_shape[0:2])
