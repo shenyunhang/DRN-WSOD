@@ -9,7 +9,7 @@ This project is based on [Detectron](https://github.com/facebookresearch/Detectr
 
 ## Pytorch Version
 
-We also reimplement our method with Pytorch in [here](https://github.com/shenyunhang/DRN-WSOD-pytorch), which is still under development.
+We also reimplement our method with Pytorch in [here](https://github.com/shenyunhang/DRN-WSOD-pytorch/tree/DRN-WSOD/projects/WSL), which is still under development.
 
 Note that Pytorch codes do not strictly follow this Caffe2 codes, but still have similar results.
 
